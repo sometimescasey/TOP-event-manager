@@ -31,8 +31,7 @@ class EventManager
         roles: %w[legislatorUpperBody legislatorLowerBody]
       )
       legislators = legislators.officials
-    rescue StandardError => e
-      print(e)
+    rescue StandardError => _e
       'You can find your representatives by visiting www.commoncause.org/take-action/find-elected-officials'
     end
   end
@@ -46,6 +45,27 @@ class EventManager
     end
   end
 
+  def clean_phone_number(number)
+    number = number.to_s.gsub(/\D+/, '') # Remove all non-digits, for brackets, dashes etc
+
+    if number.nil?
+    # do nothing
+    # If the phone number is less than 10 digits, assume that it is a bad number
+    # If the phone number is more than 11 digits, assume that it is a bad number
+    elsif number.length < 10 || number.length > 11
+      number = nil
+    elsif number.length == 11
+      if number[0] == '1'
+        # If the phone number is 11 digits and the first number is 1, trim the 1 and use the remaining 10 digits
+        # do nothing
+      else
+        # If the phone number is 11 digits and the first number is not 1, then it is a bad number
+        number = nil
+      end
+    end
+    number
+  end
+
   def show_info
     contents = CSV.open('event_attendees.csv', headers: true, header_converters: :symbol)
     contents.each do |row|
@@ -57,9 +77,10 @@ class EventManager
       erb_template = ERB.new template_letter
       personal_letter = erb_template.result(binding)
 
-      puts personal_letter
-
       save_letter(id, personal_letter)
+
+      cleaned_number = clean_phone_number(row[:homephone])
+      puts "#{id} #{name} #{cleaned_number}"
     end
   end
 end
